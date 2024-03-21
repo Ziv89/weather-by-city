@@ -29,7 +29,7 @@ function Search(props) {
           className="form-control"
           placeholder="Search"
           ref={inputRef}
-          onChange={onInputChange}
+          onChange={debounce(onInputChange,300)}
         />
         <ul id="results" className="list-group" ref={ulRef}>
           {options.map((option, index) => {
