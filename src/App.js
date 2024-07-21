@@ -34,7 +34,7 @@ function App() {
 
   };
   return (
-    <BrowserRouter>
+    <BrowserRouter  basename="/<weather-by-city-wedpage>">
       <>
       <Heading
   trim="normal"
