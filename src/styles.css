@@ -4,6 +4,7 @@
 .App {
     font-family: sans-serif;
     text-align: center;
+
   }
   
   .search-button
@@ -14,10 +15,25 @@
   }
   .search-bar-dropdown
   {
-    width: 60%;
+    width: 80%;
     display: flex;
     flex-wrap: nowrap;
+    position: relative;
   }
+
+  .search-bar-dropdown .radix-ui-textfield {
+    flex: 1; /* Make the input take up all available space */
+  }
+  
+  .favorite-button {
+    margin-left: 10px; /* Adjust margin if needed */
+  }
+  
+  .favorite-button {
+    margin-left: 10px; /* Adjust the margin as needed */
+  }
+
+  
   .tempraturetype
   {
     font-size: 15px;
@@ -176,24 +192,25 @@ button {
 
 
 .search-bar-dropdown {
-  width: 20%;
+  width: 30%;
   position: relative; /* Add this line */
   
 }
 
 ul#results {
   position: absolute;
-  top: calc(100% + 5px); /* Adjust as needed */
+  top: calc(100% + 5px);
   left: 0;
   display: none;
   width: 100%;
-  max-height: 200px; /* Adjust as needed */
+  max-height: 200px;
   overflow-y: auto;
   background-color: white;
   border-top: none;
   z-index: 1;
   overflow: hidden;
 }
+
 
 ul#results button {
   width: 100%;
@@ -286,4 +303,43 @@ ul#results button:hover {
   .weather-card {
     flex: 1 1 calc(100% - 20px); /* One card per row on mobile devices */
   }
+}
+
+.movie-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 16px;
+  max-width: 300px;
+  background-color: #fff;
+}
+
+.movie-card-img {
+  width: 100%;
+  height: auto;
+}
+
+.movie-card-details {
+  padding: 16px;
+}
+
+.movie-card-title {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.movie-card-date {
+  color: #555;
+}
+
+.movie-card-rating {
+  margin-top: 8px;
+}
+
+.movie-card-favorite-indicator {
+  padding: 16px;
+  background-color: #f9f9f9;
+  text-align: center;
+  border-top: 1px solid #ddd;
 }

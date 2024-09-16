@@ -1,119 +1,96 @@
+import React, { useState, useEffect, useCallback } from 'react';
 import Search from "../components/search";
 import useLocalStorageState from "../data/useLocalStorageState";
-import { Theme, Button, Heading, Flex, Radio, Text } from "@radix-ui/themes";
-import "@radix-ui/themes/styles.css";
+import { Theme } from "@radix-ui/themes";
 import WeatherCard from "../components/Card";
 import "../App.css";
-import { React, useState, useEffect } from "react";
-
-const defaultOptions = [];
-var defaultOptionsTemp = [];
-var weatherInfostring;
-var DRFSA = false;
-
-function setCities() {
-  for (let i = 0; i < defaultOptionsTemp.length; i++) {
-    const keys = Object.keys(defaultOptionsTemp[i]);
-    defaultOptions.push({
-      id: `${defaultOptionsTemp[i][keys[1]]}`,
-      city: `${defaultOptionsTemp[i][keys[4]]}`,
-    });
-  }
-}
-
-function settingWeatherinfo(childData) {
-  weatherInfostring = childData;
-}
+import { debounce } from '../utilis/debounce'; 
+import { readFavoritesFromLocalStorage, writeFavoritesToLocalStorage } from '../data/localStorageData';
 
 const Main = ({ isMetric }) => {
-  const [localFavorites, setlocalFavorites] =
-    useLocalStorageState("localFavorites");
-
+  const [localFavorites, setLocalFavorites] = useLocalStorageState("localFavorites");
   const [search, setSearch] = useState("");
   const [options, setOptions] = useState([]);
   const [selectedCity, setSelectedCity] = useState(null);
-  const [cityWeatherDate, setCityWeatherData] = useState(null);
-  const [favorites, setFavorites] = useState([]);
+  const [cityWeatherData, setCityWeatherData] = useState(null);
+
+  // Debounced function to fetch city options
+  const fetchCities = useCallback(
+    debounce((searchTerm) => {
+      if (searchTerm) {
+        fetch(
+          `https://dataservice.accuweather.com/locations/v1/cities/autocomplete?apikey=rWcJtE6eqJ18yZR2VONEpBLSEedKAY22&q=${searchTerm}`,
+          { method: "GET" }
+        )
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            const formattedOptions = data.map((item) => ({
+              id: item.Key,
+              city: item.LocalizedName,
+            }));
+            setOptions(formattedOptions);
+          })
+          .catch((error) => console.error("Error fetching city data:", error));
+      } else {
+        setOptions([]);
+      }
+    }, 500),
+    []
+  );
+  
 
   useEffect(() => {
-    if (search) {
-      fetch(
-        "https://dataservice.accuweather.com/locations/v1/cities/autocomplete?apikey=rWcJtE6eqJ18yZR2VONEpBLSEedKAY22&q=" +
-          search,
-        {
-          method: "GET",
-        }
-      )
-        .then((response) => response.json())
-        .then((data) => {
-          console.log(data);
-          defaultOptionsTemp = data;
-          setCities();
-        })
-        .catch((error) => console.log(error));
-    }
-  }, [search]);
+    fetchCities(search);
+  }, [search, fetchCities]);
 
   useEffect(() => {
     if (selectedCity) {
       fetch(
-        "https://dataservice.accuweather.com/forecasts/v1/daily/5day/" +
-          selectedCity.id +
-          "?apikey=YwaQ5spXthCAbfnd8RpToPB5w7n8NpuZ&metric=true",
-        {
-          method: "GET",
-        }
+        `https://dataservice.accuweather.com/forecasts/v1/daily/5day/${selectedCity.id}?apikey=rWcJtE6eqJ18yZR2VONEpBLSEedKAY22`,
+        { method: "GET" }
       )
-        .then((response) => response.json())
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
         .then((data) => {
-          console.log(data);
           setCityWeatherData(data);
         })
-        .catch((error) => console.log(error));
+        .catch((error) => {
+          console.error("Error fetching weather data:", error);
+          setCityWeatherData(null);
+        });
     }
   }, [selectedCity]);
 
-  const setWeatherinfo = (childData) => {
-    settingWeatherinfo(childData);
-  };
-
   const onInputChange = (event) => {
-    setOptions(
-      defaultOptions.filter(
-        (option) => option.city.includes(event.target.value),
-        setSearch(event.target.value)
-      )
-    );
+    setSearch(event.target.value);
   };
 
-  const onAddCityToFavorite = (event) => {
-    if (event && event.id) {
-      console.log(event);
+  const onAddCityToFavorite = (city) => {
+    if (city && city.id) {
+      let updatedFavorites = readFavoritesFromLocalStorage();
 
-      if (!localFavorites) {
-        setlocalFavorites(JSON.stringify([event.id]));
+      if (updatedFavorites.includes(city.id)) {
+        updatedFavorites = updatedFavorites.filter(id => id !== city.id);
       } else {
-        const parsedFavorites = JSON.parse(localFavorites);
-
-        if (Array.isArray(parsedFavorites)) {
-          if (parsedFavorites.includes(event.id)) {
-            const updatedFavorites = parsedFavorites.filter(
-              (id) => id !== event.id
-            );
-            setlocalFavorites(JSON.stringify(updatedFavorites));
-          } else {
-            setlocalFavorites(JSON.stringify([...parsedFavorites, event.id]));
-          }
-        } else {
-          setlocalFavorites(JSON.stringify([event.id]));
-        }
+        updatedFavorites.push(city.id);
       }
+
+      writeFavoritesToLocalStorage(updatedFavorites);
+      setLocalFavorites(updatedFavorites);
     }
   };
 
-  const onCitySelected = (event) => {
-    console.log(event);
-    setSelectedCity(event);
+  const onCitySelected = (city) => {
+    setSelectedCity(city);
   };
 
   return (
@@ -125,48 +102,25 @@ const Main = ({ isMetric }) => {
           citySelected={onCitySelected}
           addCityToFavorite={onAddCityToFavorite}
         />
-        {selectedCity ? (
-          <h2>
-            The Weather for the next five days in {selectedCity.city} is :{" "}
-          </h2>
-        ) : null}
+        {selectedCity && (
+          <h2>The Weather for the next five days in {selectedCity.city} is :</h2>
+        )}
         <div className="cards-container">
-          {cityWeatherDate?.DailyForecasts?.map((forcast, forecastIndex) => (
+          {cityWeatherData?.DailyForecasts?.map((forecast, index) => (
             <WeatherCard
-              min={
-                !isMetric
-                  ? forcast.Temperature.Minimum.Value
-                  : (
-                      (5 / 9) *
-                      (forcast.Temperature.Minimum.Value - 32)
-                    ).toFixed(0)
-              }
-              max={
-                !isMetric
-                  ? forcast.Temperature.Maximum.Value
-                  : (
-                      (5 / 9) *
-                      (forcast.Temperature.Maximum.Value - 32)
-                    ).toFixed(2)
-              }
-              type={!isMetric ? forcast.Temperature.Maximum.Unit : "C"}
-              summeryDay={forcast.Day.IconPhrase}
-              summeryNight={forcast.Night.IconPhrase}
-              date={forcast.Date}
-              iconDay={
-                forcast.Day.Icon > 10
-                  ? forcast.Day.Icon + "-s"
-                  : "0" + forcast.Day.Icon + "-s"
-              }
-              iconNight={
-                forcast.Night.Icon > 10
-                  ? forcast.Night.Icon + "-s"
-                  : "0" + forcast.Night.Icon + "-s"
-              }
+              key={index}
+              min={isMetric ? (5 / 9 * (forecast.Temperature.Minimum.Value - 32)).toFixed(0) : forecast.Temperature.Minimum.Value}
+              max={isMetric ? (5 / 9 * (forecast.Temperature.Maximum.Value - 32)).toFixed(2) : forecast.Temperature.Maximum.Value}
+              type={isMetric ? "C" : "F"}
+              summeryDay={forecast.Day.IconPhrase}
+              summeryNight={forecast.Night.IconPhrase}
+              date={forecast.Date}
+              iconDay={`${forecast.Day.Icon > 10 ? forecast.Day.Icon : `0${forecast.Day.Icon}`}-s`}
+              iconNight={`${forecast.Night.Icon > 10 ? forecast.Night.Icon : `0${forecast.Night.Icon}`}-s`}
               isFavorites={false}
-              cityName={forcast.Link}
-              index={forecastIndex}
-            ></WeatherCard>
+              cityName={forecast.Link}
+              index={index}
+            />
           ))}
         </div>
       </div>

@@ -1,131 +1,129 @@
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import data from "./ListData.json"
-import {Dropdown} from 'react-bootstrap'
-// import cities from "./cities";
-import Select from 'react-select';
 import { debounce } from '../utilis/debounce'; 
-import Card from './Card';
-import '@radix-ui/themes/styles.css';
-import { Theme, Button,TextField } from '@radix-ui/themes'
-import {HeartIcon,MagnifyingGlassIcon,HeartFilledIcon} from '@radix-ui/react-icons'
-var keys;
-var citydetails;
+import { Theme, Button, TextField } from '@radix-ui/themes';
+import { HeartIcon, MagnifyingGlassIcon, HeartFilledIcon } from '@radix-ui/react-icons';
 
-function Search(props) {
-  const { options, onInputChange, citySelected, addCityToFavorite } = props;
+function Search({ options, onInputChange, citySelected, addCityToFavorite }) {
   const ulRef = useRef(null);
-  const inputRef = useRef();
+  const inputRef = useRef(null);
 
   const [favoriteCities, setFavoriteCities] = useState([]);
   const [citydetails, setCityDetails] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
-
   const [searchInput, setSearchInput] = useState('');
 
+  // Load favorites from localStorage on mount
   useEffect(() => {
-    if (localStorage.getItem("localFavorites")) {
-      const storedFavorites = JSON.parse(localStorage.getItem("localFavorites"));
-      setFavoriteCities(storedFavorites);
+    const storedFavorites = localStorage.getItem('localFavorites');
+    if (storedFavorites) {
+      setFavoriteCities(JSON.parse(storedFavorites));
     }
   }, []);
 
+  // Check if the selected city is in favorites
   useEffect(() => {
     setIsFavorite(isCityInFavorites(citydetails?.id));
   }, [citydetails]);
 
-
+  // Enable or disable button based on search input and city details
   useEffect(() => {
-    setIsButtonDisabled(searchInput.trim() || !citydetails || !citydetails.city);
+    setIsButtonDisabled(!searchInput.trim() || !citydetails || !citydetails.city);
   }, [searchInput, citydetails]);
-  
+
+  // Handle click to add/remove city from favorites
   const handleClick = (e) => {
     e.preventDefault();
     addCityToFavorite(citydetails);
     setIsFavorite(!isFavorite);
-  }
+  };
 
+  // Handle city selection from dropdown
   const handleCitySelect = (city) => {
     setCityDetails(city);
     citySelected(city);
-    setIsButtonDisabled(false);
+    setSearchInput(city.city); // Update input with selected city name
     ulRef.current.style.display = 'none';
-    inputRef.current.value = city.LocalizedName;
   };
 
-  const handleSearchButtonClick = () => {
-    inputRef.current.value = searchInput;
-    setIsButtonDisabled(false);
-  };
+  // Check if city is in favorites
+  const isCityInFavorites = (cityId) => favoriteCities.includes(cityId);
 
-  useEffect(() => {
-    if (ulRef.current) {
-      inputRef.current.addEventListener('click', (event) => {
-        event.stopPropagation();
-        ulRef.current.style.display = 'flex';
-        onInputChange(event);
-      });
-      document.addEventListener('click', (event) => {
-        if (ulRef.current) { // Add a null check before accessing style
-          ulRef.current.style.display = 'none';
-        }
-      });
-    }
-  }, []);
-  const isCityInFavorites = (cityId) => {
-    return favoriteCities.includes(cityId);
-  };
+  // Debounced input change handler
+  const debouncedOnInputChange = useCallback(
+    debounce((value) => {
+      onInputChange({ target: { value } }); // Simulate the event object expected by the handler
+      const city = options.find((option) =>
+        option.city.toLowerCase().includes(value.toLowerCase())
+      );
+      setCityDetails(city || null);
+      setIsButtonDisabled(!value.trim() || !city);
+    }, 300),
+    [options, onInputChange]
+  );
 
-
-
-
-  const onInputChangeWrapper = (e) => {
-    onInputChange(e);
+  // Handle input change
+  const handleInputChange = (e) => {
     const inputValue = e.target.value;
-    const city = options.find(option => option.city.toLowerCase() === inputValue.toLowerCase());
-    setCityDetails(city || null);
     setSearchInput(inputValue);
-    setIsButtonDisabled(!inputValue.trim() || !city);
+    debouncedOnInputChange(inputValue);
   };
+
+  // Set up click event listeners for input and outside clicks
+  useEffect(() => {
+    const outsideClickListener = (event) => {
+      if (ulRef.current && !ulRef.current.contains(event.target)) {
+        ulRef.current.style.display = 'none';
+      }
+    };
+
+    document.addEventListener('click', outsideClickListener);
+
+    return () => {
+      document.removeEventListener('click', outsideClickListener);
+    };
+  }, []);
 
   return (
     <Theme>
       <div className="search-button">
         <div className="search-bar-dropdown">
-          <TextField.Root placeholder="Search City" autoComplete='true' ref={inputRef} onChange={debounce(onInputChangeWrapper, 300)}>
+          <TextField.Root
+            placeholder="Search City"
+            autoComplete="true"
+            ref={inputRef}
+            value={searchInput}
+            onChange={handleInputChange}
+            style={{ flex: 1 }}
+          >
             <TextField.Slot>
               <MagnifyingGlassIcon height="16" width="16" />
             </TextField.Slot>
           </TextField.Root>
-          <Button onClick={handleClick} disabled={isButtonDisabled}>
-            <div>
-              {isFavorite ? (
-                <HeartFilledIcon />
-              ) : (
-                <HeartIcon />
-              )}
-            </div>
+          <Button
+            onClick={handleClick}
+            disabled={isButtonDisabled}
+            className="favorite-button"
+          >
+            {isFavorite ? <HeartFilledIcon /> : <HeartIcon />}
           </Button>
-          <ul id="results" className="list-group" ref={ulRef} style={{ overflow: 'hidden' }}>
-            {options.map((option, index) => {
-              return (
-                <button
+          <ul
+            id="results"
+            className="list-group"
+            ref={ulRef}
+            style={{ overflow: 'hidden', display: options.length > 0 ? 'flex' : 'none' }}
+          >
+            {options.map((option, index) => (
+              <button
                 type="button"
                 key={index}
-                onClick={(e) => {
-                  inputRef.current.value = option.city;
-                  setCityDetails(option);
-                  citySelected(option);
-                  setIsButtonDisabled(false); // Enable button when a city is selected
-                }}
+                onClick={() => handleCitySelect(option)}
                 className="list-group-item list-group-item-action"
               >
                 {option.city}
               </button>
-              );
-            })}
+            ))}
           </ul>
         </div>
       </div>

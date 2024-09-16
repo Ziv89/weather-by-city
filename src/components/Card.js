@@ -1,30 +1,20 @@
-
-import React, { useState, useEffect } from 'react';
+// WeatherCard.js
+import React from 'react';
 import '@radix-ui/themes/styles.css';
 import { Card } from '@radix-ui/themes';
 import { MinusIcon } from '@radix-ui/react-icons';
 import '../styles.css';
 
 function WeatherCard({ min, max, type, summeryNight, date, iconDay, iconNight, isFavorites, cityName, index }) {
-  // Extracting the city name from the URL
+  // Extract and format the city name from the URL
   const cityNameFromUrl = cityName.split('/').filter((part) => part !== '')[4];
-
-  // Capitalizing the first letter of the city name
   const formattedCityName = cityNameFromUrl.charAt(0).toUpperCase() + cityNameFromUrl.slice(1);
-
-  // State to track whether the city name has been displayed
-  const [cityNameDisplayed, setCityNameDisplayed] = useState(false);
-
-  // Variable to track if formattedCityName has been displayed
-  let displayedOnce = false;
 
   return (
     <>
       {isFavorites && index === 0 && (
         <div className="divdate">
-          <h2 className="temprature">
-            {formattedCityName}
-          </h2>
+          <h2 className="temprature">{formattedCityName}</h2>
         </div>
       )}
       <Card className={isFavorites && index === 0 ? 'weather-card first-card' : 'weather-card'}>
@@ -54,7 +44,6 @@ function WeatherCard({ min, max, type, summeryNight, date, iconDay, iconNight, i
           </div>
         </div>
       </Card>
-      {cityNameDisplayed && (displayedOnce = true)}
     </>
   );
 }
